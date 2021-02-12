@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pandas = '1.2.1'
+mysqlclient = '2.0.3'
+SQLAlchemy = '1.3.23'
+jupyterlab = "*"
+seaborn = "*"
+matplotlib = "*"
+xeus-python = "*"
+notebook = "*"
+arrow = "*"
+openpyxl = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
