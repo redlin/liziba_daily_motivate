@@ -18,7 +18,7 @@ orders_sql = orders_sql(last_month)
 orders_df = pd.read_sql(text(orders_sql), engine)
 # print(orders_df)
 comments_sql = comments_sql(last_month)
-print(comments_sql)
+# print(comments_sql)
 comments_df = pd.read_sql(text(comments_sql), engine)
 comments_df['add_date']= comments_df['add_date'].apply(lambda x: x.strftime('%Y-%m-%d'))
 # comments_df['total_rank'] = pd.to_numeric(comments_df["total_rank"], downcast="float")
@@ -125,7 +125,8 @@ for index, store in liziba_df.iterrows():
         store_df = store_df.append(data)
     store_df = store_df.reset_index(drop=True)
     store_df.index += 1
-    # print(store_df)
+
+    store_df.loc['合计']= store_df.sum(numeric_only=True, axis=0)
 
     store_df.to_excel('./export/{}-{}.xlsx'.format(store['门店'], last_month), index_label='序号')
 
