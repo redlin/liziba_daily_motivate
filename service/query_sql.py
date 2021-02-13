@@ -24,7 +24,8 @@ def comments_sql(date):
     where add_date like \"{}%\" \
     and (brand_name=\"受气牛肉\" or  brand_name=\"李子坝梁山鸡\" \
     or brand_name=\"三斤耗儿鱼\") \
-    and source=\"大众点评\";
+    and source=\"大众点评\" \
+    group by store_name, add_date;
   """.format(date)
 
 def store_daily_record_sql(date):
