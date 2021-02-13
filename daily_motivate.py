@@ -18,6 +18,7 @@ orders_sql = orders_sql(last_month)
 orders_df = pd.read_sql(text(orders_sql), engine)
 # print(orders_df)
 comments_sql = comments_sql(last_month)
+print(comments_sql)
 comments_df = pd.read_sql(text(comments_sql), engine)
 comments_df['add_date']= comments_df['add_date'].apply(lambda x: x.strftime('%Y-%m-%d'))
 # comments_df['total_rank'] = pd.to_numeric(comments_df["total_rank"], downcast="float")
@@ -30,8 +31,11 @@ store_records_df['people'] = pd.to_numeric(store_records_df["people"], downcast=
 # print(store_records_df)
 
 
-def get_daily_comment(store_name, date):
-   return comments_df.loc[(comments_df['store_name'] == store_name) & (comments_df['add_date'] == date)] 
+def get_daily_comment(store_name, source, date):
+   return comments_df.loc[
+       (comments_df['store_name'] == store_name) &
+       (comments_df['source'] == source) &
+       (comments_df['add_date'] == date)] 
 
 def get_store_record(store_name, date):
    return store_records_df.loc[(store_records_df['store_name'] == store_name) & (store_records_df['open_date'] == date)] 
@@ -45,21 +49,30 @@ for index, store in liziba_df.iterrows():
     # print(store_orders_df)
     for i, order in store_orders_df.iterrows():
         # print('store: {}, date: {}, number of orders: {}'.format(order['store_name'], order['open_date'], order['orders']))
-        comment = get_daily_comment(store['别名'], order['open_date'])
+        comment = get_daily_comment(store['别名'], '大众点评', order['open_date'])
+        take_out_comment = get_daily_comment(store['别名'], '美团外卖', order['open_date'])
         store_record = get_store_record(order['store_name'], order['open_date'])
         # print(comment)
         store_name = store['门店']
         open_date = order['open_date']
         satisfaction_score = store['用户满意度门槛值']
         dianping_score = 0
+        take_out_score = 0
         staff_on_duty = 0
         if comment.empty:
-            print('!! store: {}, date: {} COMMENT EMPTY !!'.format(store_name, open_date))
+            print('!! 门店: {}, 日期: {} 没有找到大众点评记录!!'.format(store_name, open_date))
         else:
             dianping_score = float(comment['total_rank'].iloc[0])
 
+        if take_out_comment.empty:
+            print('!! 门店: {}, 日期: {} 没有找到美团外卖记录 !!'.format(store_name, open_date))
+        else:
+            score = take_out_comment['total_rank'].iloc[0]
+            if score != '--':
+                take_out_score = float(score)
+
         if store_record.empty:
-            print('!! store: {}, date: {} STORE RECORD EMPTY !!'.format(store_name, open_date))
+            print('!! 门店: {}, 日期: {} 没有找到门店该天记录 !!'.format(store_name, open_date))
         else:
             staff_on_duty = store_record['people'].iloc[0]
 
@@ -68,6 +81,15 @@ for index, store in liziba_df.iterrows():
         if staff_on_duty:
             # staff_avg = round(order['orders'] / staff_on_duty, 1)
             staff_avg = order['orders'] // staff_on_duty
+
+        #计算满意度激励
+        satisfaction_motivate = 0
+        if satisfaction_score <= dianping_score and satisfaction_score <= take_out_score:
+            satisfaction_motivate = 5
+
+        #差评加减
+        no_bad_comment = 5
+        #TODO
 
         order_motivate = 0
         baseline_orders = int(store['基础单量'])
@@ -91,7 +113,14 @@ for index, store in liziba_df.iterrows():
             '订单数': [order['orders']],
             '人均单量': [staff_avg],
             '单量达标': [order_meet_goal],
-            '订单激励': [order_motivate]
+            '订单激励': [order_motivate],
+            '外卖评分': [take_out_score],
+            '外卖满意度达标': [ '达标' if satisfaction_score <= take_out_score else '未达标'],
+            '用户满意度激励': [satisfaction_motivate],
+            '表扬激励': [0],
+            '差评加减': [no_bad_comment],
+            '每日激励汇总': [order_motivate + satisfaction_motivate + no_bad_comment],
+            '每日激励成本': [(order_motivate + satisfaction_motivate + no_bad_comment) * staff_on_duty]
             })
         store_df = store_df.append(data)
     store_df = store_df.reset_index(drop=True)
