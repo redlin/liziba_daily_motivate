@@ -27,6 +27,18 @@ def comments_sql(date):
     group by store_name, source, add_date;
   """.format(date)
 
+def bad_comments_sql(date):
+  return """
+    select c_storeName2 as store_name, c_datetime as add_date, \
+     c_sourceName as source, c_storeName1 as brand_name, c_score as score\
+    FROM datav.customer_e\
+    where c_datetime like \"{}-%\" \
+    and c_score < 3.5 \
+    and (c_storeName1=\"受气牛肉\" or  c_storeName1=\"李子坝梁山鸡\" \
+    or c_storeName1=\"三斤耗儿鱼\") \
+    group by store_name, c_sourceName;
+  """.format(date)
+
 def store_daily_record_sql(date):
   return """
     select store_name, open_date, brand_name, reserve_7 as people \

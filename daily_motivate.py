@@ -3,7 +3,7 @@ import arrow
 import os 
 import pandas as pd
 from sqlalchemy import create_engine,text
-from service.query_sql import orders_sql, comments_sql, store_daily_record_sql
+from service.query_sql import * 
 from service.convertors import convert_str_2_number
 from service.utils import *
 
@@ -31,6 +31,12 @@ comments_df['add_date']= comments_df['add_date'].apply(lambda x: x.strftime('%Y-
 # comments_df['total_rank'] = pd.to_numeric(comments_df["total_rank"], downcast="float")
 # print(comments_df)
 
+bad_comments_sql = bad_comments_sql(last_month)
+print(bad_comments_sql)
+bad_comments_df = pd.read_sql(text(bad_comments_sql), engine)
+bad_comments_df['add_date']= bad_comments_df['add_date'].apply(lambda x: x.strftime('%Y-%m-%d'))
+# print(bad_comments_df)
+
 store_records_sql = store_daily_record_sql(last_month)
 store_records_df = pd.read_sql(text(store_records_sql), engine)
 #convert string to number
@@ -38,11 +44,16 @@ store_records_df['people'] = pd.to_numeric(store_records_df["people"], downcast=
 # print(store_records_df)
 
 
-def get_daily_comment(store_name, source, date):
+def get_daily_comments(store_name, source, date):
    return comments_df.loc[
        (comments_df['store_name'] == store_name) &
        (comments_df['source'] == source) &
        (comments_df['add_date'] == date)] 
+
+def get_bad_comments(store_name, date):
+   return bad_comments_df.loc[
+       (bad_comments_df['store_name'] == store_name) &
+       (bad_comments_df['add_date'] == date)] 
 
 def get_store_record(store_name, date):
    return store_records_df.loc[(store_records_df['store_name'] == store_name) & (store_records_df['open_date'] == date)] 
@@ -58,8 +69,8 @@ def generate_excel_files(brand):
         # print(store_orders_df)
         for i, order in store_orders_df.iterrows():
             # print('store: {}, date: {}, number of orders: {}'.format(order['store_name'], order['open_date'], order['orders']))
-            comment = get_daily_comment(store['别名'], '大众点评', order['open_date'])
-            take_out_comment = get_daily_comment(store['别名'], '美团外卖', order['open_date'])
+            comment = get_daily_comments(store['别名'], '大众点评', order['open_date'])
+            take_out_comment = get_daily_comments(store['别名'], '美团外卖', order['open_date'])
             store_record = get_store_record(order['store_name'], order['open_date'])
             # print(comment)
             store_name = store['门店']
@@ -98,7 +109,11 @@ def generate_excel_files(brand):
 
             #差评加减
             no_bad_comment = 5
-            #TODO
+            bad_comment = get_bad_comments(store['别名'], order['open_date'])
+            if not bad_comment.empty:
+                print('!! 门店: {}, 日期: {} 有差评 !!'.format(store_name, open_date))
+                no_bad_comment = -5 
+            
 
             order_motivate = 0
             baseline_orders = int(store['基础单量'])
