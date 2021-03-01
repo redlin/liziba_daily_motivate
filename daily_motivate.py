@@ -15,8 +15,10 @@ current_dir = current_dir()
 
 
 now = arrow.utcnow()
+# yesterday = now.shift(months=-1).format('YYYY-MM-DD')
+# last_month = now.shift(months=-1).format('YYYY-MM')
 yesterday = now.shift(months=-1).format('YYYY-MM-DD')
-last_month = now.shift(months=-1).format('YYYY-MM')
+last_month = '2021-02' 
 #engine = create_engine('mysql+pymysql://datav:!Ed$77zs#q@rm-m5er7r7810lzv6m3rxo.mysql.rds.aliyuncs.com:3306/datav?charset=utf8', echo=False)
 # for mac dev env
 engine = create_engine('mysql://datav:!Ed$77zs#q@rm-m5er7r7810lzv6m3rxo.mysql.rds.aliyuncs.com:3306/datav', echo=False)
@@ -66,6 +68,8 @@ def generate_excel_files(brand):
     for index, store in liziba_df.iterrows():
         store_df = pd.DataFrame()
         store_orders_df = orders_df.loc[orders_df['store_name'] == store['门店']]
+
+        
         # print(store_orders_df)
         for i, order in store_orders_df.iterrows():
             # print('store: {}, date: {}, number of orders: {}'.format(order['store_name'], order['open_date'], order['orders']))
@@ -77,15 +81,19 @@ def generate_excel_files(brand):
             open_date = order['open_date']
             satisfaction_score = store['用户满意度门槛值']
             dianping_score = 0
+            meet_comment_goal = '达标'
+            comment_score = '--' 
             take_out_score = 0
             staff_on_duty = 0
+
             if comment.empty:
-                print('!! 门店: {}, 日期: {} 没有找到大众点评记录!!'.format(store_name, open_date))
+                print('!! 门店: {}, 日期: {} 没有找到大众点评评价记录!!'.format(store_name, open_date))
             else:
                 dianping_score = float(comment['total_rank'].iloc[0])
 
+
             if take_out_comment.empty:
-                print('!! 门店: {}, 日期: {} 没有找到美团外卖记录 !!'.format(store_name, open_date))
+                print('!! 门店: {}, 日期: {} 没有找到美团外卖评价记录 !!'.format(store_name, open_date))
             else:
                 score = take_out_comment['total_rank'].iloc[0]
                 if score != '--':
@@ -104,8 +112,18 @@ def generate_excel_files(brand):
 
             #计算满意度激励
             satisfaction_motivate = 0
-            if satisfaction_score <= dianping_score and satisfaction_score <= take_out_score:
-                satisfaction_motivate = 5
+            if dianping_score != 0 and take_out_score != 0:
+                comment_score = round((dianping_score + take_out_score) / 2, 2)
+                if satisfaction_score > comment_score:
+                    meet_comment_goal = '未达标'
+            elif dianping_score != 0 or take_out_score != 0:
+                comment_score  = dianping_score + take_out_score
+                if satisfaction_score > comment_score:
+                    meet_comment_goal = '未达标'
+
+
+            if meet_comment_goal == '达标' and comment_score != '--' and comment_score > store['评价激励达标']:
+                satisfaction_motivate = 5 
 
             #差评加减
             no_bad_comment = 5
@@ -121,8 +139,13 @@ def generate_excel_files(brand):
             order_meet_goal = '未达标'
             if not isinstance(staff_avg, str) and staff_avg >= baseline_orders:
                 order_meet_goal = '达标'
-                order_motivate += 5
-                order_motivate += (staff_avg - baseline_orders) * 5 
+                if meet_comment_goal == '达标':
+                    order_motivate += 5
+                    order_motivate += (staff_avg - baseline_orders) * 5 
+            
+            daily_total = order_motivate + satisfaction_motivate + no_bad_comment
+            if daily_total < 0:
+                daily_total = 0
 
 
             data = pd.DataFrame({
@@ -130,21 +153,26 @@ def generate_excel_files(brand):
                 '日期': [open_date],
                 '安全事故': ['无'],
                 '用户满意度门槛值': [satisfaction_score],
-                '评价分数': [dianping_score],
-                '用户满意度达标': [ '达标' if satisfaction_score <= dianping_score else '未达标'],
+                '评价激励达标门槛': [store['评价激励达标']],
+
+                # '评价分数': [dianping_score],
+                # '用户满意度达标': [meet_dianping_score],
                 '当日在岗人数': [staff_on_duty],
                 '基础单量': [store['基础单量']],
                 '订单数': [order['orders']],
                 '人均单量': [staff_avg],
                 '单量达标': [order_meet_goal],
                 '订单激励': [order_motivate],
-                '外卖评分': [take_out_score],
-                '外卖满意度达标': [ '达标' if satisfaction_score <= take_out_score else '未达标'],
+                # '外卖评分': [take_out_score],
+                # '外卖满意度达标': [meet_take_out_score],
+                # '用户满意度激励': [satisfaction_motivate],
+                '平台评价分数': [comment_score],
+                '用户满意度达标': [meet_comment_goal],
                 '用户满意度激励': [satisfaction_motivate],
                 '表扬激励': [0],
                 '差评加减': [no_bad_comment],
-                '每日激励汇总': [order_motivate + satisfaction_motivate + no_bad_comment],
-                '每日激励成本': [(order_motivate + satisfaction_motivate + no_bad_comment) * staff_on_duty]
+                '每日激励汇总': [daily_total],
+                '每日激励成本': [daily_total * staff_on_duty]
                 })
             store_df = store_df.append(data)
         store_df = store_df.reset_index(drop=True)

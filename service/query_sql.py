@@ -34,9 +34,10 @@ def bad_comments_sql(date):
     FROM datav.customer_e\
     where c_datetime like \"{}-%\" \
     and c_score < 3.5 \
+    and c_handle > 0 and c_handle < 10 \
     and (c_storeName1=\"受气牛肉\" or  c_storeName1=\"李子坝梁山鸡\" \
     or c_storeName1=\"三斤耗儿鱼\") \
-    group by store_name, c_sourceName;
+    group by store_name, c_sourceName, c_handle;
   """.format(date)
 
 def store_daily_record_sql(date):
