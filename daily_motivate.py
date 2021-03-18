@@ -34,7 +34,7 @@ comments_df['add_date']= comments_df['add_date'].apply(lambda x: x.strftime('%Y-
 # print(comments_df)
 
 bad_comments_sql = bad_comments_sql(last_month)
-print(bad_comments_sql)
+# print(bad_comments_sql)
 bad_comments_df = pd.read_sql(text(bad_comments_sql), engine)
 bad_comments_df['add_date']= bad_comments_df['add_date'].apply(lambda x: x.strftime('%Y-%m-%d'))
 # print(bad_comments_df)
@@ -68,7 +68,11 @@ def generate_excel_files(brand):
     for index, store in liziba_df.iterrows():
         store_df = pd.DataFrame()
         store_orders_df = orders_df.loc[orders_df['store_name'] == store['门店']]
-
+        store_orders_df = store_orders_df.reset_index(drop=True)
+        if store['门店'] == '受气牛肉三峡广场店':
+            other_orders_df = orders_df.loc[orders_df['store_name'] == '李子坝梁山鸡三峡广场店']
+            other_orders_df = other_orders_df.reset_index(drop=True)
+            store_orders_df['orders'] = store_orders_df['orders'] + other_orders_df['orders']
         
         # print(store_orders_df)
         for i, order in store_orders_df.iterrows():
