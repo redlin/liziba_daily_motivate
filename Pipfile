@@ -14,6 +14,9 @@ xeus-python = "*"
 notebook = "*"
 arrow = "*"
 openpyxl = "*"
+clickhouse-driver = "*"
+lz4 = "*"
+xlrd = "*"
 
 [dev-packages]
 
