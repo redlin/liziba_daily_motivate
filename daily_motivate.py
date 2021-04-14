@@ -18,7 +18,10 @@ now = arrow.utcnow()
 # yesterday = now.shift(months=-1).format('YYYY-MM-DD')
 # last_month = now.shift(months=-1).format('YYYY-MM')
 yesterday = now.shift(months=-1).format('YYYY-MM-DD')
-last_month = '2021-02' 
+last_month = '2021-03'
+
+end_month = arrow.get(last_month).ceil('month').format('YYYY-MM-DD')
+print(end_month)
 #engine = create_engine('mysql+pymysql://datav:!Ed$77zs#q@rm-m5er7r7810lzv6m3rxo.mysql.rds.aliyuncs.com:3306/datav?charset=utf8', echo=False)
 # for mac dev env
 engine = create_engine('mysql://datav:!Ed$77zs#q@rm-m5er7r7810lzv6m3rxo.mysql.rds.aliyuncs.com:3306/datav', echo=False)
@@ -47,10 +50,34 @@ store_records_df['people'] = pd.to_numeric(store_records_df["people"], downcast=
 
 
 def get_daily_comments(store_name, source, date):
-   return comments_df.loc[
-       (comments_df['store_name'] == store_name) &
-       (comments_df['source'] == source) &
-       (comments_df['add_date'] == date)] 
+    i_date = date 
+    while i_date > '{}-01'.format(last_month):
+        i_date = arrow.get(i_date).shift(days=-1).format('YYYY-MM-DD')
+        comment = comments_df.loc[
+            (comments_df['store_name'] == store_name) &
+            (comments_df['source'] == source) &
+            (comments_df['add_date'] ==i_date)]
+
+        if not comment.empty and comment['total_rank'].iloc[0] != '--':
+            return comment
+        else:
+            print('门店 {} {} 的 {} 记录没有找到'.format(store_name, source, i_date))
+
+    i_date = date
+    end_date = arrow.get(last_month).ceil('month').format('YYYY-MM-DD')
+    while i_date < end_date:
+        i_date = arrow.get(i_date).shift(days=1).format('YYYY-MM-DD')
+        comment = comments_df.loc[
+            (comments_df['store_name'] == store_name) &
+            (comments_df['source'] == source) &
+            (comments_df['add_date'] ==i_date)]
+
+        if not comment.empty and comment['total_rank'].iloc[0] != '--':
+            return comment
+        else:
+            print('门店 {} {} 的 {} 记录没有找到'.format(store_name, source, i_date))
+    return pd.DataFrame()
+
 
 def get_bad_comments(store_name, date):
    return bad_comments_df.loc[
@@ -126,7 +153,7 @@ def generate_excel_files(brand):
                     meet_comment_goal = '未达标'
 
 
-            if meet_comment_goal == '达标' and comment_score != '--' and comment_score > store['评价激励达标']:
+            if meet_comment_goal == '达标' and comment_score != '--' and comment_score >= store['评价激励达标']:
                 satisfaction_motivate = 5 
 
             #差评加减
@@ -191,3 +218,6 @@ create_dir_if_not_exists('{}/{}'.format(current_dir, EXPORT_FOLDER))
 generate_excel_files('李子坝梁山鸡')
 generate_excel_files('受气牛肉')
 generate_excel_files('三斤耗儿鱼')
+
+# meituan_df = get_daily_comments('李子坝梁山鸡源著天街店', '美团外卖', '2021-03-05')
+# print(meituan_df)
