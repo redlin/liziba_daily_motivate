@@ -18,7 +18,7 @@ now = arrow.utcnow()
 # yesterday = now.shift(months=-1).format('YYYY-MM-DD')
 # last_month = now.shift(months=-1).format('YYYY-MM')
 yesterday = now.shift(months=-1).format('YYYY-MM-DD')
-last_month = '2021-06'
+last_month = '2021-11'
 
 end_month = arrow.get(last_month).ceil('month').format('YYYY-MM-DD')
 print(end_month)
@@ -209,10 +209,15 @@ def generate_excel_files(brand):
         store_df = store_df.reset_index(drop=True)
         store_df.index += 1
 
-        store_df.loc['合计']= store_df.sum(numeric_only=True, axis=0)
-        brand_folder = '{}-{}'.format(brand, last_month)
-        create_dir_if_not_exists('{}/{}/{}'.format(current_dir, EXPORT_FOLDER, brand_folder))
-        store_df.to_excel('./{}/{}/{}-{}.xlsx'.format(EXPORT_FOLDER , brand_folder, store['门店'], last_month), index_label='序号')
+        # print(store_df)
+
+        if not store_df.empty:
+            store_df.loc['合计']= store_df.sum(numeric_only=True, axis=0)
+            brand_folder = '{}-{}'.format(brand, last_month)
+            create_dir_if_not_exists('{}/{}/{}'.format(current_dir, EXPORT_FOLDER, brand_folder))
+            store_df.to_excel('./{}/{}/{}-{}.xlsx'.format(EXPORT_FOLDER , brand_folder, store['门店'], last_month), index_label='序号')
+        else:
+            print('!! store {} not data !!'.format(store['门店']))
 
 create_dir_if_not_exists('{}/{}'.format(current_dir, EXPORT_FOLDER))
 generate_excel_files('李子坝梁山鸡')
