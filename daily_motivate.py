@@ -18,7 +18,7 @@ now = arrow.utcnow()
 # yesterday = now.shift(months=-1).format('YYYY-MM-DD')
 # last_month = now.shift(months=-1).format('YYYY-MM')
 yesterday = now.shift(months=-1).format('YYYY-MM-DD')
-last_month = '2021-11'
+last_month = '2022-02'
 
 end_month = arrow.get(last_month).ceil('month').format('YYYY-MM-DD')
 print(end_month)
