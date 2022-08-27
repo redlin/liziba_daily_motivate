@@ -1,11 +1,12 @@
-
+# -*- coding: utf-8 -*- 
 import arrow
-import os 
+import datetime
 import pandas as pd
 from sqlalchemy import create_engine,text
 from service.query_sql import * 
 from service.convertors import convert_str_2_number
 from service.utils import *
+
 
 PER_ORDER_AWARD = 5
 EXPORT_FOLDER = 'exports'
@@ -18,7 +19,7 @@ now = arrow.utcnow()
 # yesterday = now.shift(months=-1).format('YYYY-MM-DD')
 # last_month = now.shift(months=-1).format('YYYY-MM')
 yesterday = now.shift(months=-1).format('YYYY-MM-DD')
-last_month = '2022-02'
+last_month = '2022-08'
 
 end_month = arrow.get(last_month).ceil('month').format('YYYY-MM-DD')
 print(end_month)
@@ -42,11 +43,32 @@ bad_comments_df = pd.read_sql(text(bad_comments_sql), engine)
 bad_comments_df['add_date']= bad_comments_df['add_date'].apply(lambda x: x.strftime('%Y-%m-%d'))
 # print(bad_comments_df)
 
-store_records_sql = store_daily_record_sql(last_month)
-store_records_df = pd.read_sql(text(store_records_sql), engine)
-#convert string to number
-store_records_df['people'] = pd.to_numeric(store_records_df["people"], downcast="float")
+# store_records_sql = store_daily_record_sql(last_month)
+# store_records_df = pd.read_sql(text(store_records_sql), engine)
+# #convert string to number
+# store_records_df['people'] = pd.to_numeric(store_records_df["people"], downcast="float")
 # print(store_records_df)
+
+store_staff_df = pd.read_csv('./各店出勤人数统计表 - 2022年8月.csv')
+
+def format_date(date):
+    d = datetime.datetime.strptime(date.replace('-','/'), '%Y/%m/%d')
+    month = d.strftime("%m").lstrip('0')
+    day = d.strftime("%d").lstrip('0')
+    return f"{month}月{day}日"
+
+def get_staff_number(store_name, date):
+    print(f"get number of staff for store:{store_name}")
+    store_staff_row = store_staff_df.loc[store_staff_df['门店名称'] == store_name, [format_date(date)]]
+    staff_df = store_staff_row.reset_index()
+    # print(staff_df)
+    # staff_df = store_staff_row['8月11日']
+    if not staff_df.empty:
+        return staff_df.iloc[0, 1]
+    else:
+        print('!!!!! 没找到门店出勤统计数据 !!!!!')
+        return 0
+    # return (store_staff_row.re)
 
 
 def get_daily_comments(store_name, source, date):
@@ -89,12 +111,15 @@ def get_store_record(store_name, date):
 
 excel_df = pd.read_excel('./daily_motivate.xlsx')
 
+
 def generate_excel_files(brand):
     liziba_df = excel_df.loc[excel_df['品牌'] == brand]
+
     # print(liziba_df)
     for index, store in liziba_df.iterrows():
         store_df = pd.DataFrame()
         store_orders_df = orders_df.loc[orders_df['store_name'] == store['门店']]
+
         store_orders_df = store_orders_df.reset_index(drop=True)
         if store['门店'] == '受气牛肉三峡广场店':
             other_orders_df = orders_df.loc[orders_df['store_name'] == '李子坝梁山鸡三峡广场店']
@@ -106,7 +131,7 @@ def generate_excel_files(brand):
             # print('store: {}, date: {}, number of orders: {}'.format(order['store_name'], order['open_date'], order['orders']))
             comment = get_daily_comments(store['别名'], '大众点评', order['open_date'])
             take_out_comment = get_daily_comments(store['别名'], '美团外卖', order['open_date'])
-            store_record = get_store_record(order['store_name'], order['open_date'])
+            # store_record = get_store_record(order['store_name'], order['open_date'])
             # print(comment)
             store_name = store['门店']
             open_date = order['open_date']
@@ -115,7 +140,14 @@ def generate_excel_files(brand):
             meet_comment_goal = '达标'
             comment_score = '--' 
             take_out_score = 0
-            staff_on_duty = 0
+            # staff_on_duty = 0
+            staff_on_duty = get_staff_number(store['门店'], open_date)  
+            print(f"{store['门店']} {open_date} 出勤人数: {staff_on_duty}")
+
+
+            # staff = get_staff_number(store['门店'], open_date)
+            # # print(staff)
+            # return
 
             if comment.empty:
                 print('!! 门店: {}, 日期: {} 没有找到大众点评评价记录!!'.format(store_name, open_date))
@@ -130,10 +162,10 @@ def generate_excel_files(brand):
                 if score != '--':
                     take_out_score = float(score)
 
-            if store_record.empty:
-                print('!! 门店: {}, 日期: {} 没有找到门店该天记录 !!'.format(store_name, open_date))
-            else:
-                staff_on_duty = store_record['people'].iloc[0]
+            # if store_record.empty:
+            #     print('!! 门店: {}, 日期: {} 没有找到门店该天记录 !!'.format(store_name, open_date))
+            # else:
+            #     staff_on_duty = store_record['people'].iloc[0]
 
             #计算订单量激励
             staff_avg = '--'
@@ -205,7 +237,8 @@ def generate_excel_files(brand):
                 '每日激励汇总': [daily_total],
                 '每日激励成本': [daily_total * staff_on_duty]
                 })
-            store_df = store_df.append(data)
+            # store_df = store_df.append(data)
+            store_df = pd.concat([store_df, data])
         store_df = store_df.reset_index(drop=True)
         store_df.index += 1
 
@@ -222,7 +255,7 @@ def generate_excel_files(brand):
 create_dir_if_not_exists('{}/{}'.format(current_dir, EXPORT_FOLDER))
 generate_excel_files('李子坝梁山鸡')
 generate_excel_files('受气牛肉')
-generate_excel_files('三斤耗儿鱼')
+# generate_excel_files('三斤耗儿鱼')
 
 # meituan_df = get_daily_comments('李子坝梁山鸡源著天街店', '美团外卖', '2021-03-05')
 # print(meituan_df)
