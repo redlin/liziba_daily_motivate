@@ -19,7 +19,7 @@ now = arrow.utcnow()
 # yesterday = now.shift(months=-1).format('YYYY-MM-DD')
 # last_month = now.shift(months=-1).format('YYYY-MM')
 yesterday = now.shift(months=-1).format('YYYY-MM-DD')
-last_month = '2022-08'
+last_month = '2023-01'
 
 end_month = arrow.get(last_month).ceil('month').format('YYYY-MM-DD')
 print(end_month)
@@ -49,7 +49,7 @@ bad_comments_df['add_date']= bad_comments_df['add_date'].apply(lambda x: x.strft
 # store_records_df['people'] = pd.to_numeric(store_records_df["people"], downcast="float")
 # print(store_records_df)
 
-store_staff_df = pd.read_csv('./各店出勤人数统计表 - 2022年8月.csv')
+store_staff_df = pd.read_csv('./各店出勤人数统计表-牛肉2023 - 2023.1.csv')
 
 def format_date(date):
     d = datetime.datetime.strptime(date.replace('-','/'), '%Y/%m/%d')
@@ -171,7 +171,8 @@ def generate_excel_files(brand):
             staff_avg = '--'
             if staff_on_duty:
                 # staff_avg = round(order['orders'] / staff_on_duty, 1)
-                staff_avg = order['orders'] // staff_on_duty
+                print(f"order------{order['orders']} {staff_on_duty}")
+                staff_avg = order['orders'] // float(staff_on_duty)
 
             #计算满意度激励
             satisfaction_motivate = 0
@@ -232,10 +233,10 @@ def generate_excel_files(brand):
                 '平台评价分数': [comment_score],
                 '用户满意度达标': [meet_comment_goal],
                 '用户满意度激励': [satisfaction_motivate],
-                '表扬激励': [0],
+                # '表扬激励': [0],
                 '差评加减': [no_bad_comment],
                 '每日激励汇总': [daily_total],
-                '每日激励成本': [daily_total * staff_on_duty]
+                '每日激励成本': [daily_total * float(staff_on_duty)]
                 })
             # store_df = store_df.append(data)
             store_df = pd.concat([store_df, data])
@@ -253,7 +254,7 @@ def generate_excel_files(brand):
             print('!! store {} not data !!'.format(store['门店']))
 
 create_dir_if_not_exists('{}/{}'.format(current_dir, EXPORT_FOLDER))
-generate_excel_files('李子坝梁山鸡')
+# generate_excel_files('李子坝梁山鸡')
 generate_excel_files('受气牛肉')
 # generate_excel_files('三斤耗儿鱼')
 
