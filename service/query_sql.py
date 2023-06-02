@@ -3,7 +3,7 @@
 def orders_sql(date):
   return """
     select brand_name, store_name, open_date, count(*) as orders \
-    FROM datav.t_bill_info_detail where open_date like '{}-%' \
+    FROM datav.t_bill_info_detail where open_date like '{}-%' and actual_money >= 80\
     group by store_name, open_date;
   """.format(date)
 
